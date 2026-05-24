@@ -1,7 +1,11 @@
+import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   ActionIcon,
   Box,
   Button,
+  Center,
   Checkbox,
   Code,
   Group,
@@ -14,16 +18,57 @@ import {
   Title
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
+import { IconGripVertical } from '@tabler/icons-react';
 import '@mantine/core/styles.css';
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_BUTTONS, loadButtons, saveButtons } from '../storage';
 import type { CopyButton } from '../types';
+
+type SortableRowProps = {
+  button: CopyButton;
+  onChange: (id: string, field: keyof CopyButton, value: string | boolean) => void;
+  onDeleteClick: (id: string) => void;
+};
+
+const SortableRow = ({ button, onChange, onDeleteClick }: SortableRowProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: button.id });
+
+  return (
+    <Table.Tr ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
+      <Table.Td ta='center'>
+        <Center {...attributes} {...listeners} style={{ cursor: 'grab' }}>
+          <IconGripVertical size={16} />
+        </Center>
+      </Table.Td>
+      <Table.Td>
+        <TextInput value={button.label} onChange={(e) => onChange(button.id, 'label', e.target.value)} size='xs' />
+      </Table.Td>
+      <Table.Td>
+        <TextInput
+          value={button.format}
+          onChange={(e) => onChange(button.id, 'format', e.target.value)}
+          size='xs'
+          style={{ fontFamily: 'monospace' }}
+        />
+      </Table.Td>
+      <Table.Td ta='center'>
+        <Checkbox checked={button.enabled} onChange={(e) => onChange(button.id, 'enabled', e.target.checked)} />
+      </Table.Td>
+      <Table.Td ta='center'>
+        <ActionIcon color='red' variant='subtle' onClick={() => onDeleteClick(button.id)} aria-label='削除'>
+          ✕
+        </ActionIcon>
+      </Table.Td>
+    </Table.Tr>
+  );
+};
 
 export const OptionsPage = () => {
   const [buttons, setButtons] = useState<CopyButton[]>([]);
   const [deleteOpened, { open: openDelete, close: closeDelete }] = useDisclosure(false);
   const [resetOpened, { open: openReset, close: closeReset }] = useDisclosure(false);
   const deleteTargetId = useRef<string | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor));
 
   useEffect(() => {
     loadButtons().then(setButtons);
@@ -66,6 +111,15 @@ export const OptionsPage = () => {
     closeReset();
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = buttons.findIndex((b) => b.id === active.id);
+      const newIndex = buttons.findIndex((b) => b.id === over.id);
+      update(arrayMove(buttons, oldIndex, newIndex));
+    }
+  };
+
   return (
     <MantineProvider
       theme={{
@@ -101,53 +155,34 @@ export const OptionsPage = () => {
         </Stack>
       </Modal>
 
-      <Box m='xl' maw={760}>
+      <Box m='xl' maw={800}>
         <Stack gap='md'>
           <Title order={3}>Link Ninja - 設定</Title>
 
-          <Table withTableBorder withColumnBorders>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th w={180}>ラベル</Table.Th>
-                <Table.Th>フォーマット</Table.Th>
-                <Table.Th w={60} ta='center'>
-                  有効
-                </Table.Th>
-                <Table.Th w={60} ta='center'>
-                  削除
-                </Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {buttons.map((b) => (
-                <Table.Tr key={b.id}>
-                  <Table.Td>
-                    <TextInput
-                      value={b.label}
-                      onChange={(e) => handleChange(b.id, 'label', e.target.value)}
-                      size='xs'
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <TextInput
-                      value={b.format}
-                      onChange={(e) => handleChange(b.id, 'format', e.target.value)}
-                      size='xs'
-                      style={{ fontFamily: 'monospace' }}
-                    />
-                  </Table.Td>
-                  <Table.Td ta='center'>
-                    <Checkbox checked={b.enabled} onChange={(e) => handleChange(b.id, 'enabled', e.target.checked)} />
-                  </Table.Td>
-                  <Table.Td ta='center'>
-                    <ActionIcon color='red' variant='subtle' onClick={() => handleDeleteClick(b.id)} aria-label='削除'>
-                      ✕
-                    </ActionIcon>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={buttons.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+              <Table withTableBorder withColumnBorders>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th w={40} />
+                    <Table.Th w={180}>ラベル</Table.Th>
+                    <Table.Th>フォーマット</Table.Th>
+                    <Table.Th w={60} ta='center'>
+                      有効
+                    </Table.Th>
+                    <Table.Th w={60} ta='center'>
+                      削除
+                    </Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {buttons.map((b) => (
+                    <SortableRow key={b.id} button={b} onChange={handleChange} onDeleteClick={handleDeleteClick} />
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </SortableContext>
+          </DndContext>
 
           <Group>
             <Button onClick={handleAdd} size='sm'>
