@@ -2,31 +2,40 @@ import { Box, Button, MantineProvider, Stack } from '@mantine/core';
 import '@mantine/core/styles.css';
 import { useEffect, useState } from 'react';
 import browser from 'webextension-polyfill';
+import { applyTemplate, loadButtons } from '../storage';
+import type { CopyButton } from '../types';
 
-type CopyButtonState = 'idle' | 'copied';
+type CopyState = Record<string, 'idle' | 'copied'>;
 
 const FEEDBACK_DURATION_MS = 2000;
 
 export const Popup = () => {
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
-  const [markdownState, setMarkdownState] = useState<CopyButtonState>('idle');
-  const [titleState, setTitleState] = useState<CopyButtonState>('idle');
+  const [buttons, setButtons] = useState<CopyButton[]>([]);
+  const [copyState, setCopyState] = useState<CopyState>({});
 
   useEffect(() => {
-    const fetchTab = async () => {
+    const init = async () => {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       setUrl(tab.url ?? '');
       setTitle(tab.title ?? '');
+      const btns = await loadButtons();
+      setButtons(btns);
     };
-    fetchTab();
+    init();
   }, []);
 
-  const copyWithFeedback = async (text: string, setState: (s: CopyButtonState) => void) => {
+  const handleCopy = async (btn: CopyButton) => {
+    const text = applyTemplate(btn.format, title, url);
     await navigator.clipboard.writeText(text);
-    setState('copied');
-    setTimeout(() => setState('idle'), FEEDBACK_DURATION_MS);
+    setCopyState((prev) => ({ ...prev, [btn.id]: 'copied' }));
+    setTimeout(() => {
+      setCopyState((prev) => ({ ...prev, [btn.id]: 'idle' }));
+    }, FEEDBACK_DURATION_MS);
   };
+
+  const enabledButtons = buttons.filter((b) => b.enabled);
 
   return (
     <MantineProvider
@@ -37,18 +46,15 @@ export const Popup = () => {
     >
       <Box m='md' w={320}>
         <Stack>
-          <Button
-            onClick={() => copyWithFeedback(`[${title}](${url})`, setMarkdownState)}
-            color={markdownState === 'copied' ? 'green' : undefined}
-          >
-            {markdownState === 'copied' ? 'コピーしました！' : 'markdown'}
-          </Button>
-          <Button
-            onClick={() => copyWithFeedback(title, setTitleState)}
-            color={titleState === 'copied' ? 'green' : undefined}
-          >
-            {titleState === 'copied' ? 'コピーしました！' : 'タイトルのみ'}
-          </Button>
+          {enabledButtons.map((btn) => (
+            <Button
+              key={btn.id}
+              onClick={() => handleCopy(btn)}
+              color={copyState[btn.id] === 'copied' ? 'green' : undefined}
+            >
+              {copyState[btn.id] === 'copied' ? 'コピーしました！' : btn.label}
+            </Button>
+          ))}
         </Stack>
       </Box>
     </MantineProvider>
