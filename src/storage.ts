@@ -1,5 +1,7 @@
 import browser from 'webextension-polyfill';
-import type { CopyButton } from './types';
+import type { CopyButton, RegexRule } from './types';
+
+export { applyRegexRules } from './regex';
 
 const STORAGE_KEY = 'copyButtons';
 
@@ -22,3 +24,18 @@ export const saveButtons = async (buttons: CopyButton[]): Promise<void> => {
 export const applyTemplate = (format: string, title: string, url: string): string => {
   return format.replace(/\{title\}/g, title).replace(/\{url\}/g, url);
 };
+
+const RULES_KEY = 'regexRules';
+
+export const loadRules = async (): Promise<RegexRule[]> => {
+  const result = await browser.storage.sync.get(RULES_KEY);
+  const stored = result[RULES_KEY];
+  if (!stored || !Array.isArray(stored)) return [];
+  // storage から取得した値は型情報がないため RegexRule[] として扱う
+  return stored as RegexRule[];
+};
+
+export const saveRules = async (rules: RegexRule[]): Promise<void> => {
+  await browser.storage.sync.set({ [RULES_KEY]: rules });
+};
+

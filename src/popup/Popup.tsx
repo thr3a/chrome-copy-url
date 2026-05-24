@@ -2,8 +2,8 @@ import { Box, Button, MantineProvider, Stack } from '@mantine/core';
 import '@mantine/core/styles.css';
 import { useEffect, useState } from 'react';
 import browser from 'webextension-polyfill';
-import { applyTemplate, loadButtons } from '../storage';
-import type { CopyButton } from '../types';
+import { applyRegexRules, applyTemplate, loadButtons, loadRules } from '../storage';
+import type { CopyButton, RegexRule } from '../types';
 
 type CopyState = Record<string, 'idle' | 'copied'>;
 
@@ -13,6 +13,7 @@ export const Popup = () => {
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [buttons, setButtons] = useState<CopyButton[]>([]);
+  const [rules, setRules] = useState<RegexRule[]>([]);
   const [copyState, setCopyState] = useState<CopyState>({});
 
   useEffect(() => {
@@ -22,12 +23,15 @@ export const Popup = () => {
       setTitle(tab.title ?? '');
       const btns = await loadButtons();
       setButtons(btns);
+      const loadedRules = await loadRules();
+      setRules(loadedRules);
     };
     init();
   }, []);
 
   const handleCopy = async (btn: CopyButton) => {
-    const text = applyTemplate(btn.format, title, url);
+    const convertedUrl = applyRegexRules(url, rules);
+    const text = applyTemplate(btn.format, title, convertedUrl);
     await navigator.clipboard.writeText(text);
     setCopyState((prev) => ({ ...prev, [btn.id]: 'copied' }));
     setTimeout(() => {
