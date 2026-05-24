@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "My Chrome Extension",
+  "name": "clip url",
   "version": "1.0",
   "description": "My Chrome Extension",
   "icons": {
@@ -10,7 +10,8 @@
   },
   "permissions": [
     "background",
-    "storage"
+    "storage",
+    "activeTab"
   ],
   "action": {
     "default_icon": {
