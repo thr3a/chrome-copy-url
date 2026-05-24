@@ -1,0 +1,37 @@
+{
+  "name": "chrome-extension-template",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "node esbuild.js",
+    "chrome": "web-ext run -s dist -t chromium --start-url https://example.com/",
+    "lint": "biome check --write --unsafe ./src && npx tsc --noEmit",
+    "build": "NODE_ENV=production node esbuild.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "@mantine/core": "^9.2.1",
+    "@mantine/hooks": "^9.2.1",
+    "@tabler/icons-react": "^3.44.0",
+    "@types/node": "^25.9.1",
+    "@types/react-dom": "^19.2.3",
+    "@types/webextension-polyfill": "^0.12.5",
+    "dayjs": "^1.11.20",
+    "esbuild": "^0.28.0",
+    "fs-extra": "^11.3.5",
+    "glob": "^13.0.6",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "typescript": "^6.0.3",
+    "web-ext": "^10.2.0",
+    "webextension-polyfill": "^0.12.0"
+  }
+}
